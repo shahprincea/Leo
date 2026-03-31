@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -19,6 +20,8 @@ type SOSEvent struct {
 	ID          string
 	WearerID    string
 	Status      string // "active" | "cancelled" | "resolved"
+	TriggeredBy string // "manual" | "fall" | "wellness"
+	FallEventID string // optional — set when triggered_by=fall
 	TriggeredAt time.Time
 	CancelledAt *time.Time
 	ResolvedAt  *time.Time
@@ -55,7 +58,9 @@ type SOSRepository interface {
 	GetContactByTier(ctx context.Context, wearerID string, tier int) (*ContactConfig, error)
 
 	// CreateSOSEvent inserts a new active SOS event and returns it.
-	CreateSOSEvent(ctx context.Context, wearerID string) (*SOSEvent, error)
+	// triggeredBy: "manual" | "fall" | "wellness"
+	// fallEventID: optional UUID of the associated fall_event.
+	CreateSOSEvent(ctx context.Context, wearerID, triggeredBy, fallEventID string) (*SOSEvent, error)
 
 	// GetActiveSOSEvent returns the active SOS event with the given ID, or nil if
 	// it doesn't exist or is no longer active.
@@ -103,6 +108,16 @@ func (h *SOSHandler) Trigger(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse optional body fields (body is not required — defaults apply).
+	var body struct {
+		TriggeredBy string `json:"triggered_by"`
+		FallEventID string `json:"fall_event_id"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if body.TriggeredBy == "" {
+		body.TriggeredBy = "manual"
+	}
+
 	contact, err := h.db.GetOnCallContact(ctx, wearerID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal server error")
@@ -113,7 +128,7 @@ func (h *SOSHandler) Trigger(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, err := h.db.CreateSOSEvent(ctx, wearerID)
+	event, err := h.db.CreateSOSEvent(ctx, wearerID, body.TriggeredBy, body.FallEventID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
@@ -226,14 +241,19 @@ func (r *PostgresSOSRepository) GetContactByTier(ctx context.Context, wearerID s
 	return c, nil
 }
 
-func (r *PostgresSOSRepository) CreateSOSEvent(ctx context.Context, wearerID string) (*SOSEvent, error) {
+func (r *PostgresSOSRepository) CreateSOSEvent(ctx context.Context, wearerID, triggeredBy, fallEventID string) (*SOSEvent, error) {
+	if triggeredBy == "" {
+		triggeredBy = "manual"
+	}
 	ev := &SOSEvent{}
 	err := r.db.QueryRow(ctx, `
-		INSERT INTO sos_events (wearer_id)
-		VALUES ($1)
-		RETURNING id, wearer_id, status, triggered_at, cancelled_at, resolved_at`,
-		wearerID,
-	).Scan(&ev.ID, &ev.WearerID, &ev.Status, &ev.TriggeredAt, &ev.CancelledAt, &ev.ResolvedAt)
+		INSERT INTO sos_events (wearer_id, triggered_by, fall_event_id)
+		VALUES ($1, $2, NULLIF($3, ''))
+		RETURNING id, wearer_id, status, triggered_by,
+		          COALESCE(fall_event_id, ''), triggered_at, cancelled_at, resolved_at`,
+		wearerID, triggeredBy, fallEventID,
+	).Scan(&ev.ID, &ev.WearerID, &ev.Status, &ev.TriggeredBy,
+		&ev.FallEventID, &ev.TriggeredAt, &ev.CancelledAt, &ev.ResolvedAt)
 	if err != nil {
 		return nil, err
 	}

@@ -73,6 +73,62 @@ curl -s -X POST http://localhost:8080/wearers \
   | python3 -m json.tool
 ```
 
+### Authenticate a watch device (returns device_token)
+```bash
+curl -s -X POST http://localhost:8080/auth/device \
+  -H "Content-Type: application/json" \
+  -d '{"wearer_id":"<wearer_id>","pin":"1234"}' \
+  | python3 -m json.tool
+```
+
+### Register a watch (use device_token)
+```bash
+curl -s -X POST http://localhost:8080/watches/register \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <device_token>" \
+  -d '{"device_id":"hw-abc123","model":"samsung_galaxy_watch6_lte","os_version":"4.0","carrier":"T-Mobile"}' \
+  | python3 -m json.tool
+```
+
+### Fetch watch config
+```bash
+curl -s http://localhost:8080/watches/config \
+  -H "Authorization: Bearer <device_token>" \
+  | python3 -m json.tool
+```
+
+### Trigger SOS (from watch)
+```bash
+curl -s -X POST http://localhost:8080/sos \
+  -H "Authorization: Bearer <device_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"triggered_by":"manual"}' \
+  | python3 -m json.tool
+```
+
+### Cancel SOS (wearer tapped I'm OK)
+```bash
+curl -s -X POST http://localhost:8080/sos/<sos_id>/cancel \
+  -H "Authorization: Bearer <device_token>" \
+  | python3 -m json.tool
+```
+
+### Report a detected fall
+```bash
+curl -s -X POST http://localhost:8080/falls \
+  -H "Authorization: Bearer <device_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"fall_type":"hard"}' \
+  | python3 -m json.tool
+```
+
+### Cancel a fall (user tapped I'm OK during countdown)
+```bash
+curl -s -X POST http://localhost:8080/falls/<fall_id>/cancel \
+  -H "Authorization: Bearer <device_token>" \
+  | python3 -m json.tool
+```
+
 ---
 
 ## Run Tests
@@ -130,7 +186,7 @@ Copy `.env.example` to `.env` and update as needed:
 | `DATABASE_URL` | postgres://mayuri:... | Postgres connection string |
 | `REDIS_URL` | redis://localhost:6379 | Redis connection |
 | `JWT_SECRET` | change-me | **Change this in production** |
-| `TWILIO_ACCOUNT_SID` | — | For SOS calls + SMS (add when building Issue #5+) |
+| `TWILIO_ACCOUNT_SID` | — | For SOS calls + SMS (Issues #6+, swap `NoopCaller` in router.go) |
 | `FIREBASE_PROJECT_ID` | — | For push notifications |
 | `STRIPE_SECRET_KEY` | — | For billing |
 
@@ -143,9 +199,9 @@ Copy `.env.example` to `.env` and update as needed:
 | #2 | Project scaffold (Go, Flutter, Wear OS, migrations) | ✅ Done |
 | #3 | Auth (register, login, JWT, refresh, watch PIN) | ✅ Done |
 | #4 | Wearer + family member management | ✅ Done |
-| #5 | Watch registration + remote config sync | 🔄 Next |
-| #6 | SOS routing + escalation tiers | ⏳ Pending |
-| #7 | Fall detection | ⏳ Pending |
+| #5 | Watch registration + remote config sync | ✅ Done |
+| #6 | SOS routing + escalation tiers | ✅ Done |
+| #7 | Fall detection | 🔄 In Progress |
 | #8 | GPS + geofencing + wandering alerts | ⏳ Pending |
 | #9 | Health monitoring (HR, SpO2, steps) | ⏳ Pending |
 | #10 | Blood pressure (Samsung only) | ⏳ Pending |

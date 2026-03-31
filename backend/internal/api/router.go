@@ -57,6 +57,14 @@ func NewRouter(db *pgxpool.Pool, rdb *redis.Client, cfg *config.Config) chi.Rout
 	wsHandler := NewWSHandler(hub, cfg, NewPostgresWearerRepository(db))
 	r.Get("/ws", wsHandler.ServeWS)
 
+	// Fall detection endpoints (require device_token auth)
+	fallHandler := NewFallHandler(db)
+	r.Route("/falls", func(r chi.Router) {
+		r.Use(auth.RequireDeviceAuth(rdb))
+		r.Post("/", fallHandler.Report)
+		r.Post("/{id}/cancel", fallHandler.Cancel)
+	})
+
 	// SOS endpoints (require device_token auth)
 	// NoopCaller is used until Twilio credentials are configured.
 	sosHandler := NewSOSHandler(db, rdb, NoopCaller{})
