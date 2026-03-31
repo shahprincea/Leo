@@ -21,13 +21,13 @@ import (
 type fakeRepo struct {
 	mu      sync.Mutex
 	users   map[string]*User // keyed by email
-	wearers map[string]*Wearer
+	wearers map[string]*WearerAuth
 }
 
 func newFakeRepo() *fakeRepo {
 	return &fakeRepo{
 		users:   make(map[string]*User),
-		wearers: make(map[string]*Wearer),
+		wearers: make(map[string]*WearerAuth),
 	}
 }
 
@@ -75,7 +75,7 @@ func (f *fakeRepo) FindUserByID(_ context.Context, id string) (*User, error) {
 	return nil, pgx.ErrNoRows
 }
 
-func (f *fakeRepo) FindWearerByID(_ context.Context, id string) (*Wearer, error) {
+func (f *fakeRepo) FindWearerByID(_ context.Context, id string) (*WearerAuth, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	w, ok := f.wearers[id]
@@ -341,7 +341,7 @@ func TestDeviceAuth_Success(t *testing.T) {
 
 	// Seed a wearer with a known PIN.
 	pinHash, _ := auth.HashPassword("1234")
-	repo.wearers["wearer-1"] = &Wearer{ID: "wearer-1", PinHash: pinHash}
+	repo.wearers["wearer-1"] = &WearerAuth{ID: "wearer-1", PinHash: pinHash}
 
 	rr := postJSON(h.DeviceAuth, map[string]string{
 		"wearer_id": "wearer-1",
@@ -362,7 +362,7 @@ func TestDeviceAuth_WrongPin(t *testing.T) {
 	h := testHandler(repo, tokens)
 
 	pinHash, _ := auth.HashPassword("1234")
-	repo.wearers["wearer-2"] = &Wearer{ID: "wearer-2", PinHash: pinHash}
+	repo.wearers["wearer-2"] = &WearerAuth{ID: "wearer-2", PinHash: pinHash}
 
 	rr := postJSON(h.DeviceAuth, map[string]string{
 		"wearer_id": "wearer-2",
