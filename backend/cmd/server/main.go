@@ -39,7 +39,7 @@ func main() {
 		log.Println("Redis cache connection established")
 	}
 
-	router := api.NewRouter()
+	router := api.NewRouter(pool, redisClient, cfg)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.ServerPort,

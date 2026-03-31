@@ -45,3 +45,9 @@ local.properties
 # ============================================================
 .env*
 !.env.example
+
+# Salesforce DX
+.sfdx/
+
+# Claude Code
+.claude/
