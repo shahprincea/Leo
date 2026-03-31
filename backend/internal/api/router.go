@@ -27,7 +27,7 @@ func NewRouter(db *pgxpool.Pool, rdb *redis.Client, cfg *config.Config) chi.Rout
 	r.Post("/auth/refresh", authHandler.Refresh)
 	r.Post("/auth/device", authHandler.DeviceAuth)
 
-	// Wearers (requires auth)
+	// Wearers (requires JWT auth)
 	wearerHandler := NewWearerHandler(db, rdb, cfg)
 	r.Route("/wearers", func(r chi.Router) {
 		r.Use(auth.RequireAuth(cfg.JWTSecret))
@@ -38,8 +38,21 @@ func NewRouter(db *pgxpool.Pool, rdb *redis.Client, cfg *config.Config) chi.Rout
 		r.Get("/{wearerID}/members", wearerHandler.ListMembers)
 	})
 
-	// Wearer member management (requires auth, outside /wearers group)
+	// Wearer member management (requires JWT auth, outside /wearers group)
 	r.With(auth.RequireAuth(cfg.JWTSecret)).Patch("/wearer-members/{memberID}", wearerHandler.UpdateMember)
+
+	// Watch device endpoints (require device_token auth)
+	hub := NewHub()
+	watchHandler := NewWatchHandler(db, hub)
+	r.Route("/watches", func(r chi.Router) {
+		r.Use(auth.RequireDeviceAuth(rdb))
+		r.Post("/register", watchHandler.Register)
+		r.Get("/config", watchHandler.Config)
+	})
+
+	// WebSocket — companion app real-time events (requires JWT via ?token= query param)
+	wsHandler := NewWSHandler(hub, cfg, NewPostgresWearerRepository(db))
+	r.Get("/ws", wsHandler.ServeWS)
 
 	return r
 }
