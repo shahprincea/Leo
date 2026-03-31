@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  go-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Build
+        run: cd backend && go build ./...
+
+      - name: Vet
+        run: cd backend && go vet ./...
+
+      - name: Test
+        run: cd backend && go test ./... -v -race
+
+  flutter-companion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Get dependencies
+        run: cd companion && flutter pub get
+
+      - name: Analyze
+        run: cd companion && flutter analyze
+
+      - name: Test
+        run: cd companion && flutter test
+
+  wearos-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Validate Wear OS project structure
+        run: |
+          test -f wearos/app/build.gradle.kts
+          test -f wearos/app/src/main/AndroidManifest.xml
+          test -f wearos/app/src/main/java/com/mayuri/watch/MainActivity.kt
+          echo "Wear OS project structure validated"
