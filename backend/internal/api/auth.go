@@ -23,8 +23,8 @@ type User struct {
 	CreatedAt    time.Time
 }
 
-// Wearer holds the minimal wearer data needed for device auth.
-type Wearer struct {
+// WearerAuth holds the minimal wearer data needed for device auth.
+type WearerAuth struct {
 	ID      string
 	PinHash string
 }
@@ -35,7 +35,7 @@ type UserRepository interface {
 	CreateUser(ctx context.Context, email, passwordHash, fullName string, phone *string) (*User, error)
 	FindUserByEmail(ctx context.Context, email string) (*User, error)
 	FindUserByID(ctx context.Context, id string) (*User, error)
-	FindWearerByID(ctx context.Context, id string) (*Wearer, error)
+	FindWearerByID(ctx context.Context, id string) (*WearerAuth, error)
 }
 
 // RedisTokenStore abstracts Redis operations for auth handlers.
@@ -98,8 +98,8 @@ func (r *PostgresUserRepository) FindUserByID(ctx context.Context, id string) (*
 	return u, nil
 }
 
-func (r *PostgresUserRepository) FindWearerByID(ctx context.Context, id string) (*Wearer, error) {
-	w := &Wearer{}
+func (r *PostgresUserRepository) FindWearerByID(ctx context.Context, id string) (*WearerAuth, error) {
+	w := &WearerAuth{}
 	err := r.db.QueryRow(ctx,
 		`SELECT id, pin_hash FROM wearers WHERE id = $1 AND deleted_at IS NULL`,
 		id,
