@@ -45,6 +45,22 @@
             </intent-filter>
         </activity>
 
+        <!-- Fall detection: always-on foreground service -->
+        <service
+            android:name=".fall.FallDetectionService"
+            android:exported="false"
+            android:foregroundServiceType="health" />
+
+        <!-- Fall confirmation countdown UI -->
+        <activity
+            android:name=".fall.FallConfirmationActivity"
+            android:exported="false"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:keepScreenOn="true"
+            android:taskAffinity=""
+            android:excludeFromRecents="true" />
+
     </application>
 
 </manifest>

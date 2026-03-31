@@ -88,15 +88,20 @@ func (f *fakeSOSRepository) GetContactByTier(_ context.Context, wearerID string,
 	return nil, nil
 }
 
-func (f *fakeSOSRepository) CreateSOSEvent(_ context.Context, wearerID string) (*SOSEvent, error) {
+func (f *fakeSOSRepository) CreateSOSEvent(_ context.Context, wearerID, triggeredBy, fallEventID string) (*SOSEvent, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if triggeredBy == "" {
+		triggeredBy = "manual"
+	}
 	f.counter++
 	id := fmt.Sprintf("sos-%d", f.counter)
 	event := &SOSEvent{
 		ID:          id,
 		WearerID:    wearerID,
 		Status:      "active",
+		TriggeredBy: triggeredBy,
+		FallEventID: fallEventID,
 		TriggeredAt: time.Now(),
 	}
 	f.events[id] = event

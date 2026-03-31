@@ -76,4 +76,8 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    // Unit tests (JVM — no emulator needed for pure Kotlin logic)
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
 }
