@@ -1,6 +1,9 @@
 package api
 
 import (
+	"context"
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -53,6 +56,21 @@ func NewRouter(db *pgxpool.Pool, rdb *redis.Client, cfg *config.Config) chi.Rout
 	// WebSocket — companion app real-time events (requires JWT via ?token= query param)
 	wsHandler := NewWSHandler(hub, cfg, NewPostgresWearerRepository(db))
 	r.Get("/ws", wsHandler.ServeWS)
+
+	// SOS endpoints (require device_token auth)
+	// NoopCaller is used until Twilio credentials are configured.
+	sosHandler := NewSOSHandler(db, rdb, NoopCaller{})
+	r.Route("/sos", func(r chi.Router) {
+		r.Use(auth.RequireDeviceAuth(rdb))
+		r.Post("/", sosHandler.Trigger)
+		r.Post("/{id}/cancel", sosHandler.Cancel)
+	})
+
+	// Start SOS escalation poller in the background.
+	if rdb != nil {
+		poller := NewEscalationPoller(rdb, NewPostgresSOSRepository(db), NoopCaller{})
+		go poller.Run(context.Background(), 5*time.Second)
+	}
 
 	return r
 }
